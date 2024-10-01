@@ -7,7 +7,7 @@ db_config = {
     'host': 'veggie-dogs-db.czrcm8qnf1xc.us-east-1.rds.amazonaws.com',
     'user': 'admin',
     'password': 'dbuserdbuser',
-    'database': 'product',
+    'database': 'products',
     'port': 3306
 }
 
@@ -47,7 +47,7 @@ def search_product():
     if not product_id:
         return jsonify({"error": "Username parameter is required"}), 400
 
-    query = "SELECT * FROM Product WHERE product_id LIKE %s"
+    query = "SELECT * FROM Products WHERE product_id LIKE %s"
     params = (f"%{product_id}%",)
 
     results = fetch_from_db(query, params)
