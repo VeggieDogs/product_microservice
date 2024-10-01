@@ -58,13 +58,13 @@ def search_product():
     result_list = []
     for row in results:
         result_list.append({
-            "user_id": row[0],
-            "username": row[1],
-            "email": row[2],
-            "first_name": row[3],
-            "last_name": row[4],
-            "phone_number": row[5],
-            "address": row[6],
+            "product_id": row[0],
+            "product_name": row[1],
+            "price": row[2],
+            "quantity": row[3],
+            "description": row[4],
+            "image_url": row[5],
+            "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S')
         })
 
