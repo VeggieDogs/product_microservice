@@ -42,13 +42,13 @@ def fetch_from_db(query, params=None):
 
 @app.route('/search_product', methods=['GET'])
 def search_product():
-    product_id = request.args.get('product_id')
+    product_name = request.args.get('product_name')
     
-    if not product_id:
-        return jsonify({"error": "Username parameter is required"}), 400
+    if not product_name:
+        return jsonify({"error": "product_name parameter is required"}), 400
 
-    query = "SELECT * FROM Products WHERE product_id LIKE %s"
-    params = (f"%{product_id}%",)
+    query = "SELECT * FROM Products WHERE product_name LIKE %s"
+    params = (f"%{product_name}%",)
 
     results = fetch_from_db(query, params)
 
