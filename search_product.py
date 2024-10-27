@@ -47,13 +47,21 @@ def insert_into_db(query, params):
 @app.route('/search_product', methods=['GET'])
 def search_product():
     product_name = request.args.get('product_name')
+    page = int(request.args.get('page', 1))  # Default to page 1 if not provided
+    per_page = int(request.args.get('per_page', 6))  # Default to 6 items per page
+    
     if not product_name:
         return jsonify({"error": "product_name parameter is required"}), 400
-    query = "SELECT * FROM Products WHERE product_name LIKE %s"
-    params = (f"%{product_name}%",)
+
+    offset = (page - 1) * per_page
+    query = "SELECT * FROM Products WHERE LOWER(product_name) LIKE %s LIMIT %s OFFSET %s"
+    params = (f"%{product_name.strip().lower()}%", per_page, offset)
+
     results = fetch_from_db(query, params)
+
     if isinstance(results, str):
         return jsonify({"error": results}), 500
+
     result_list = []
     for row in results:
         result_list.append({
@@ -66,6 +74,7 @@ def search_product():
             "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S')
         })
+    print(result_list)
     return jsonify(result_list), 200
 
 @app.route('/search_orders_by_id', methods=['GET'])
