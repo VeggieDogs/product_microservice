@@ -24,11 +24,11 @@ def serve_openapi_spec():
     return send_from_directory(os.getcwd(), 'openapi.yaml')
 
 db_config = {
-    'host': '52.90.112.251',
-    'user': 'admin',
-    'password': 'dbuserdbuser',
-    'database': 'products',
-    'port': 3306
+    'host': os.getenv('DB_HOST'),
+    'user': os.getenv('DB_USER'),
+    'password': os.getenv('DB_PASSWORD'),
+    'database': os.getenv('DB_NAME'),
+    'port': int(os.getenv('DB_PORT', 3306))  # Default port is 3306 if not provided
 }
 
 def fetch_from_db(query, params=None):
@@ -89,33 +89,19 @@ def search_product():
             "description": row[4],
             "image_url": row[5],
             "is_sold": row[6],
-            "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S')
+            "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
+            "seller_id": row[8]
         })
-    print(result_list)
     return jsonify(result_list), 200
 
-@app.route('/search_orders_by_id', methods=['GET'])
+@app.route('/search_products_by_user_id', methods=['GET'])
 def search_orders_by_id():
     user_id = request.args.get('user_id')
-    role = request.args.get('role')
     if not user_id:
         return jsonify({"error": "user_id parameter is required"}), 400
-    if role == 'seller':
-        query = "SELECT * FROM Orders WHERE seller_id = %s"
-        params = (user_id,)
-        results = fetch_from_db(query, params)
-    elif role == 'buyer':
-        query = "SELECT * FROM Orders WHERE buyer_id = %s"
-        params = (user_id,)
-        results = fetch_from_db(query, params)
-    else:
-        query = """
-            (SELECT * FROM Orders WHERE seller_id = %s)
-            UNION
-            (SELECT * FROM Orders WHERE buyer_id = %s)
-        """
-        params = (user_id, user_id)
-        results = fetch_from_db(query, params)
+    query = "SELECT * FROM Products WHERE seller_id = %s"
+    params = (user_id,)
+    results = fetch_from_db(query, params)
     if isinstance(results, str):
         return jsonify({"error": results}), 500
     if not results:
@@ -123,15 +109,15 @@ def search_orders_by_id():
     result_list = []
     for row in results:
         result_list.append({
-            "order_id": row[0],
-            "quantity": row[1],
-            "total_price": float(row[2]),
-            "purchase_time": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None,
-            "status": row[4],
-            "seller_id": row[5],
-            "buyer_id": row[6],
-            "product_id": row[7],
-            "created_at": row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else None
+            "product_id": row[0],
+            "product_name": row[1],
+            "price": float(row[2]) if isinstance(row[2], Decimal) else row[2],
+            "quantity": row[3],
+            "description": row[4],
+            "image_url": row[5],
+            "is_sold": row[6],
+            "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
+            "seller_id": row[8]
         })
     return jsonify(result_list), 200
 
