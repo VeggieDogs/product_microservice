@@ -7,11 +7,11 @@ app = Flask(__name__)
 CORS(app, origins="http://localhost:3000", methods=["GET", "POST"])
 
 db_config = {
-    'host': '52.90.112.251',  # Replace with the external IP of your MySQL VM
-    'user': 'admin',             # MySQL user you created
-    'password': 'dbuserdbuser',  # The password for the MySQL user
-    'database': 'products',         # The name of your database
-    'port': 3306                 # Default MySQL port
+    'host': '52.90.112.251',
+    'user': 'admin',
+    'password': 'dbuserdbuser',
+    'database': 'products',
+    'port': 3306
 }
 
 def fetch_from_db(query, params=None):
@@ -19,15 +19,11 @@ def fetch_from_db(query, params=None):
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
-
         cursor.execute(query, params)
         results = cursor.fetchall()
-
         return results
-
     except pymysql.MySQLError as err:
         return f"Error: {err}"
-
     finally:
         if conn:
             cursor.close()
@@ -38,15 +34,11 @@ def insert_into_db(query, params):
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
-
         cursor.execute(query, params)
         conn.commit()
-
         return "Success"
-
     except pymysql.MySQLError as err:
         return f"Error: {err}"
-
     finally:
         if conn:
             cursor.close()
@@ -55,18 +47,13 @@ def insert_into_db(query, params):
 @app.route('/search_product', methods=['GET'])
 def search_product():
     product_name = request.args.get('product_name')
-    
     if not product_name:
         return jsonify({"error": "product_name parameter is required"}), 400
-
     query = "SELECT * FROM Products WHERE product_name LIKE %s"
     params = (f"%{product_name}%",)
-
     results = fetch_from_db(query, params)
-
     if isinstance(results, str):
         return jsonify({"error": results}), 500
-
     result_list = []
     for row in results:
         result_list.append({
@@ -81,14 +68,53 @@ def search_product():
         })
     return jsonify(result_list), 200
 
+@app.route('/search_orders_by_id', methods=['GET'])
+def search_orders_by_id():
+    user_id = request.args.get('user_id')
+    role = request.args.get('role')
+    if not user_id:
+        return jsonify({"error": "user_id parameter is required"}), 400
+    if role == 'seller':
+        query = "SELECT * FROM Orders WHERE seller_id = %s"
+        params = (user_id,)
+        results = fetch_from_db(query, params)
+    elif role == 'buyer':
+        query = "SELECT * FROM Orders WHERE buyer_id = %s"
+        params = (user_id,)
+        results = fetch_from_db(query, params)
+    else:
+        query = """
+            (SELECT * FROM Orders WHERE seller_id = %s)
+            UNION
+            (SELECT * FROM Orders WHERE buyer_id = %s)
+        """
+        params = (user_id, user_id)
+        results = fetch_from_db(query, params)
+    if isinstance(results, str):
+        return jsonify({"error": results}), 500
+    if not results:
+        return jsonify({"message": "No orders found for this user ID"}), 404
+    result_list = []
+    for row in results:
+        result_list.append({
+            "order_id": row[0],
+            "quantity": row[1],
+            "total_price": float(row[2]),
+            "purchase_time": row[3].strftime('%Y-%m-%d %H:%M:%S') if row[3] else None,
+            "status": row[4],
+            "seller_id": row[5],
+            "buyer_id": row[6],
+            "product_id": row[7],
+            "created_at": row[8].strftime('%Y-%m-%d %H:%M:%S') if row[8] else None
+        })
+    return jsonify(result_list), 200
+
 @app.route('/post_product', methods=['POST'])
 def post_product():
     data = request.json
-    
     required_fields = ["product_name", "price", "quantity", "description", "image_url", "seller_id"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
-    
     query = """
     INSERT INTO Products (product_name, price, quantity, description, image_url, is_sold, seller_id)
     VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -99,13 +125,12 @@ def post_product():
         data["quantity"],
         data["description"],
         data["image_url"],
-        0,  # Assuming is_sold is 0 (not sold) by default
+        0,
         data["seller_id"]
     )
-
     result = insert_into_db(query, params)
     if result == "Success":
-        return jsonify({"message": "Product posted successfully"}), 201
+        return jsonify({"message": "New product added"}), 201
     else:
         return jsonify({"error": result}), 500
 
