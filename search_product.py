@@ -146,5 +146,21 @@ def post_product():
     else:
         return jsonify({"error": result}), 500
 
+@app.route('/delete_product', methods=['DELETE'])
+def delete_product():
+    product_id = request.args.get('product_id')
+    
+    if not product_id:
+        return jsonify({"error": "product_id parameter is required"}), 400
+    
+    delete_product_query = "DELETE FROM Products WHERE product_id = %s"
+    
+    result_product = insert_into_db(delete_product_query, (product_id,))
+    if result_product == "Success":
+        return jsonify({"message": f"Product with ID {product_id} deleted successfully"}), 200
+    else:
+        return jsonify({"error": result_product}), 500
+
+
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=8888, debug=True)
