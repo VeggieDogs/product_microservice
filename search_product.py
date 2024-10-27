@@ -1,10 +1,27 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
+from flask_swagger_ui import get_swaggerui_blueprint
+import os
 import pymysql
 from flask_cors import CORS
 from decimal import Decimal
 
 app = Flask(__name__)
 CORS(app, origins="http://localhost:3000", methods=["GET", "POST"])
+
+SWAGGER_URL = '/docs'
+API_URL = '/openapi.yaml'
+
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={'app_name': "Product and Orders API"}
+)
+
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
+
+@app.route('/openapi.yaml')
+def serve_openapi_spec():
+    return send_from_directory(os.getcwd(), 'openapi.yaml')
 
 db_config = {
     'host': '52.90.112.251',

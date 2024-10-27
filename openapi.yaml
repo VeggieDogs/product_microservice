@@ -1,0 +1,212 @@
+openapi: "3.0.0"
+info:
+  title: "Product and Orders API"
+  description: "API for managing products and orders in a database."
+  version: "1.0.0"
+servers:
+  - url: "http://127.0.0.1:8888"
+    description: "Local server"
+
+paths:
+  /search_product:
+    get:
+      summary: "Search for products by name"
+      description: "Retrieve a paginated list of products by name."
+      parameters:
+        - name: product_name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: "Name of the product to search for."
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: "Page number for pagination."
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 6
+          description: "Number of products per page."
+      responses:
+        "200":
+          description: "A list of products matching the search criteria."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    product_id:
+                      type: integer
+                    product_name:
+                      type: string
+                    price:
+                      type: number
+                    quantity:
+                      type: integer
+                    description:
+                      type: string
+                    image_url:
+                      type: string
+                    is_sold:
+                      type: boolean
+                    created_at:
+                      type: string
+                      format: date-time
+        "400":
+          description: "Bad Request - missing required parameters."
+        "500":
+          description: "Internal Server Error."
+
+  /search_orders_by_id:
+    get:
+      summary: "Search for orders by user ID and role"
+      description: "Retrieve a list of orders for a given user based on their role (seller or buyer)."
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: "ID of the user."
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [seller, buyer]
+          description: "Role of the user (seller or buyer)."
+      responses:
+        "200":
+          description: "A list of orders associated with the user."
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    order_id:
+                      type: integer
+                    quantity:
+                      type: integer
+                    total_price:
+                      type: number
+                    purchase_time:
+                      type: string
+                      format: date-time
+                    status:
+                      type: string
+                    seller_id:
+                      type: integer
+                    buyer_id:
+                      type: integer
+                    product_id:
+                      type: integer
+                    created_at:
+                      type: string
+                      format: date-time
+        "400":
+          description: "Bad Request - missing required parameters."
+        "404":
+          description: "Not Found - no orders found for the user ID."
+        "500":
+          description: "Internal Server Error."
+
+  /post_product:
+    post:
+      summary: "Add a new product"
+      description: "Creates a new product with details such as name, price, quantity, description, and image."
+      requestBody:
+        description: "Product data"
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                product_name:
+                  type: string
+                price:
+                  type: number
+                quantity:
+                  type: integer
+                description:
+                  type: string
+                image_url:
+                  type: string
+                seller_id:
+                  type: integer
+              required:
+                - product_name
+                - price
+                - quantity
+                - description
+                - image_url
+                - seller_id
+      responses:
+        "201":
+          description: "Product successfully created."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "New product added"
+        "400":
+          description: "Bad Request - missing required fields."
+        "500":
+          description: "Internal Server Error."
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        description:
+          type: string
+        image_url:
+          type: string
+        is_sold:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        order_id:
+          type: integer
+        quantity:
+          type: integer
+        total_price:
+          type: number
+        purchase_time:
+          type: string
+          format: date-time
+        status:
+          type: string
+        seller_id:
+          type: integer
+        buyer_id:
+          type: integer
+        product_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
