@@ -5,6 +5,9 @@ from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask import Flask, request, jsonify, send_from_directory, url_for
 
+import aiomysql
+import asyncio
+
 import logging
 from datetime import datetime
 
@@ -67,19 +70,18 @@ def fetch_from_db(query, params=None):
             cursor.close()
             conn.close()
 
-def insert_into_db(query, params):
+async def insert_into_db(query, params):
     conn = None
     try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-        cursor.execute(query, params)
-        conn.commit()
+        conn = await aiomysql.connect(**db_config)
+        async with conn.cursor() as cursor:
+            await cursor.execute(query, params)
+            await conn.commit()
         return "Success"
-    except pymysql.MySQLError as err:
+    except aiomysql.MySQLError as err:
         return f"Error: {err}"
     finally:
         if conn:
-            cursor.close()
             conn.close()
 
 @app.route('/search_product', methods=['GET'])
@@ -152,11 +154,12 @@ def search_orders_by_id():
     return jsonify({'products': result_list, "_links": {"self": url_for('search_orders_by_id', user_id=user_id, _external=True)}}), 200
 
 @app.route('/post_product', methods=['POST'])
-def post_product():
-    data = request.json
+async def post_product():
+    data = await request.get_json()
     required_fields = ["product_name", "price", "quantity", "description", "image_url", "seller_id"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
+    
     query = """
     INSERT INTO Products (product_name, price, quantity, description, image_url, is_sold, seller_id)
     VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -170,16 +173,18 @@ def post_product():
         0,
         data["seller_id"]
     )
-    result = insert_into_db(query, params)
+    
+    result = await insert_into_db(query, params)
+    
     if result == "Success":
         return jsonify({
-            "message": "New product added",
+            "message": "Accepted",
             "_links": {
                 "self": url_for('post_product', _external=True),
                 "search": url_for('search_product', _external=True),
                 "delete": url_for('delete_product', _external=True)
             }
-        }), 201
+        }), 202
     else:
         return jsonify({"error": result}), 500
 
