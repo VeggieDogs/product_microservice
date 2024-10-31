@@ -3,10 +3,31 @@ import pymysql
 from decimal import Decimal
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, url_for
+
+import logging
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app, origins="http://localhost:3000", methods=["GET", "POST"])
+
+logging.basicConfig(level=logging.INFO)
+
+@app.before_request
+def before_request_logging():
+    request.start_time = datetime.now()
+    logging.info(f"Incoming request: {request.method} {request.path}")
+
+@app.after_request
+def after_request_logging(response):
+    duration = datetime.now() - request.start_time
+    duration_ms = int(duration.total_seconds() * 1000)
+    
+    logging.info(
+        f"Completed request: {request.method} {request.path} "
+        f"Status: {response.status_code} Duration: {duration_ms}ms"
+    )
+    return response
 
 SWAGGER_URL = '/docs'
 API_URL = '/openapi.yaml'
@@ -81,7 +102,7 @@ def search_product():
 
     result_list = []
     for row in results:
-        result_list.append({
+        product = {
             "product_id": row[0],
             "product_name": row[1],
             "price": float(row[2]) if isinstance(row[2], Decimal) else row[2],
@@ -91,8 +112,15 @@ def search_product():
             "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
             "seller_id": row[8]
-        })
-    return jsonify({'products': result_list}), 200
+        }
+        product['links'] = [
+            {"rel": "self", "href": url_for('search_product', product_name=product_name, _external=True)},
+            {"rel": "update", "href": url_for('post_product', _external=True)},
+            {"rel": "delete", "href": url_for('delete_product', product_id=row[0], _external=True)}
+        ]
+        result_list.append(product)
+    
+    return jsonify(result_list), 200
 
 @app.route('/search_products_by_user_id', methods=['GET'])
 def search_orders_by_id():
