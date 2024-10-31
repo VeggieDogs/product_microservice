@@ -92,7 +92,7 @@ def search_product():
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
             "seller_id": row[8]
         })
-    return jsonify(result_list), 200
+    return jsonify({'products': result_list}), 200
 
 @app.route('/search_products_by_user_id', methods=['GET'])
 def search_orders_by_id():
