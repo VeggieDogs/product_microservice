@@ -85,8 +85,8 @@ def insert_into_db(query, params):
 @app.route('/search_product', methods=['GET'])
 def search_product():
     product_name = request.args.get('product_name')
-    page = int(request.args.get('page', 1))  # Default to page 1 if not provided
-    per_page = int(request.args.get('per_page', 6))  # Default to 6 items per page
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 6))
     
     if not product_name:
         return jsonify({"error": "product_name parameter is required"}), 400
@@ -102,7 +102,7 @@ def search_product():
 
     result_list = []
     for row in results:
-        product = {
+        result_list.append({
             "product_id": row[0],
             "product_name": row[1],
             "price": float(row[2]) if isinstance(row[2], Decimal) else row[2],
@@ -111,16 +111,14 @@ def search_product():
             "image_url": row[5],
             "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
-            "seller_id": row[8]
-        }
-        product['links'] = [
-            {"rel": "self", "href": url_for('search_product', product_name=product_name, _external=True)},
-            {"rel": "update", "href": url_for('post_product', _external=True)},
-            {"rel": "delete", "href": url_for('delete_product', product_id=row[0], _external=True)}
-        ]
-        result_list.append(product)
-    
-    return jsonify(result_list), 200
+            "seller_id": row[8],
+            "_links": {
+                "self": url_for('search_product', product_name=product_name, page=page, per_page=per_page, _external=True),
+                "post": url_for('post_product', _external=True),
+                "delete": url_for('delete_product', _external=True)
+            }
+        })
+    return jsonify({'products': result_list, "_links": {"self": url_for('search_product', product_name=product_name, _external=True)}}), 200
 
 @app.route('/search_products_by_user_id', methods=['GET'])
 def search_orders_by_id():
@@ -145,9 +143,13 @@ def search_orders_by_id():
             "image_url": row[5],
             "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
-            "seller_id": row[8]
+            "seller_id": row[8],
+            "_links": {
+                "self": url_for('search_orders_by_id', user_id=user_id, _external=True),
+                "delete": url_for('delete_product', _external=True)
+            }
         })
-    return jsonify({'products': result_list}), 200
+    return jsonify({'products': result_list, "_links": {"self": url_for('search_orders_by_id', user_id=user_id, _external=True)}}), 200
 
 @app.route('/post_product', methods=['POST'])
 def post_product():
@@ -170,7 +172,14 @@ def post_product():
     )
     result = insert_into_db(query, params)
     if result == "Success":
-        return jsonify({"message": "New product added"}), 201
+        return jsonify({
+            "message": "New product added",
+            "_links": {
+                "self": url_for('post_product', _external=True),
+                "search": url_for('search_product', _external=True),
+                "delete": url_for('delete_product', _external=True)
+            }
+        }), 201
     else:
         return jsonify({"error": result}), 500
 
@@ -185,11 +194,16 @@ def delete_product():
     
     result_product = insert_into_db(delete_product_query, (product_id,))
     if result_product == "Success":
-        return jsonify({"message": f"Product with ID {product_id} deleted successfully"}), 200
+        return jsonify({
+            "message": f"Product with ID {product_id} deleted successfully",
+            "_links": {
+                "self": url_for('delete_product', product_id=product_id, _external=True),
+                "post": url_for('post_product', _external=True),
+                "search": url_for('search_product', _external=True)
+            }
+        }), 200
     else:
         return jsonify({"error": result_product}), 500
-
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8888, debug=True)
