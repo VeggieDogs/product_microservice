@@ -1,4 +1,5 @@
 Flask==3.0.3
 pymysql==1.0.2
 flask_cors==5.0.0
-flask-swagger_ui=4.11.1
+flask-swagger_ui==4.11.1
+python-dotenv==1.0.1
