@@ -88,19 +88,33 @@ def search_product():
     product_name = request.args.get('product_name')
     page = int(request.args.get('page', 1))  # Default to page 1 if not provided
     per_page = int(request.args.get('per_page', 6))  # Default to 6 items per page
-    
+
     if not product_name:
         return jsonify({"error": "product_name parameter is required"}), 400
 
+    # Calculate offset for pagination
     offset = (page - 1) * per_page
+
+    # Query for the products
     query = "SELECT * FROM Products WHERE LOWER(product_name) LIKE %s LIMIT %s OFFSET %s"
     params = (f"%{product_name.strip().lower()}%", per_page, offset)
-
     results = fetch_from_db(query, params)
 
     if isinstance(results, str):
         return jsonify({"error": results}), 500
 
+    # Query to get the total number of matching products
+    count_query = "SELECT COUNT(*) FROM Products WHERE LOWER(product_name) LIKE %s"
+    count_params = (f"%{product_name.strip().lower()}%",)
+    total_results = fetch_from_db(count_query, count_params)
+
+    if isinstance(total_results, str) or not total_results:
+        return jsonify({"error": "Failed to retrieve total count"}), 500
+
+    total_count = total_results[0][0]  # Total number of matching products
+    total_pages = (total_count + per_page - 1) // per_page  # Calculate total pages
+
+    # Build the result list
     result_list = []
     for row in results:
         product = {
@@ -120,8 +134,17 @@ def search_product():
             {"rel": "delete", "href": url_for('delete_product', product_id=row[0], _external=True)}
         ]
         result_list.append(product)
-    
-    return jsonify(result_list), 200
+
+    # Pagination links
+    pagination_links = {
+        "self": url_for('search_product', product_name=product_name, page=page, per_page=per_page, _external=True),
+        "next": url_for('search_product', product_name=product_name, page=page + 1, per_page=per_page, _external=True) if page < total_pages else None,
+        "previous": url_for('search_product', product_name=product_name, page=page - 1, per_page=per_page, _external=True) if page > 1 else None,
+        "total_pages": total_pages,
+        "total_results": total_count
+    }
+
+    return jsonify({"products": result_list, "pagination": pagination_links}), 200
 
 @app.route('/search_products_by_user_id', methods=['GET'])
 def search_orders_by_id():
