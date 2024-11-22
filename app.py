@@ -13,7 +13,7 @@ import logging
 from datetime import datetime
 
 app = Flask(__name__)
-CORS(app, origins="http://localhost:3000", methods=["GET", "POST"])
+CORS(app)
 
 logging.basicConfig(level=logging.INFO)
 
