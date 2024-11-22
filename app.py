@@ -1,4 +1,5 @@
 import os
+import sys
 import pymysql
 from decimal import Decimal
 from flask_cors import CORS
@@ -211,4 +212,5 @@ def delete_product():
         return jsonify({"error": result_product}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8888, debug=True)
+    portNum = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
+    app.run(host='0.0.0.0', port=portNum, debug=True)
