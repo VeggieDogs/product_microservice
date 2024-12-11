@@ -5,6 +5,7 @@ from decimal import Decimal
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask import Flask, request, jsonify, send_from_directory, url_for, g
+from email_faas import invoke_lambda
 
 import logging
 from datetime import datetime
@@ -213,6 +214,11 @@ def post_product():
     )
     result = insert_into_db(query, params)
     if result == "Success":
+        email_response = invoke_lambda(
+            {'to_emails': 'ranhenryli@gmail.com'}
+            )
+        logging.info(email_response)
+
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
         product_id = cursor.lastrowid
