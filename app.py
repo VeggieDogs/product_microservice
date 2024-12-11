@@ -101,24 +101,30 @@ def search_product():
     page = int(request.args.get('page', 1))  # Default to page 1 if not provided
     per_page = int(request.args.get('per_page', 6))  # Default to 6 items per page
 
-    if not product_name:
-        return jsonify({"error": "product_name parameter is required"}), 400
+    # if not product_name:
+    #     return jsonify({"error": "product_name parameter is required"}), 400
 
     # Calculate offset for pagination
     offset = (page - 1) * per_page
 
     # Query for the products
-    query = "SELECT * FROM Products WHERE LOWER(product_name) LIKE %s LIMIT %s OFFSET %s"
-    params = (f"%{product_name.strip().lower()}%", per_page, offset)
+    if product_name:
+        query = "SELECT * FROM Products WHERE LOWER(product_name) LIKE %s LIMIT %s OFFSET %s"
+        params = (f"%{product_name.strip().lower()}%", per_page, offset)
+        count_query = "SELECT COUNT(*) FROM Products WHERE LOWER(product_name) LIKE %s"
+        count_params = (f"%{product_name.strip().lower()}%",)
+    else:
+        query = "SELECT * FROM Products LIMIT %s OFFSET %s"
+        params = (per_page, offset)
+        count_query = "SELECT COUNT(*) FROM Products"
+        count_params = None
+    
     results = fetch_from_db(query, params)
+    # Query to get the total number of matching products
+    total_results = fetch_from_db(count_query, count_params)
 
     if isinstance(results, str):
         return jsonify({"error": results}), 500
-
-    # Query to get the total number of matching products
-    count_query = "SELECT COUNT(*) FROM Products WHERE LOWER(product_name) LIKE %s"
-    count_params = (f"%{product_name.strip().lower()}%",)
-    total_results = fetch_from_db(count_query, count_params)
 
     if isinstance(total_results, str) or not total_results:
         return jsonify({"error": "Failed to retrieve total count"}), 500
