@@ -9,6 +9,8 @@ from flask import Flask, request, jsonify, send_from_directory, url_for, g
 import logging
 from datetime import datetime
 import uuid
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.getLogger('werkzeug').setLevel(logging.WARNING) # this turns of autologging for flask
 
@@ -136,13 +138,13 @@ def search_product():
             "image_url": row[5],
             "is_sold": row[6],
             "created_at": row[7].strftime('%Y-%m-%d %H:%M:%S'),
-            "seller_id": row[8]
+            "seller_id": row[8],
+            "_links": [
+                {"rel": "self", "href": url_for('search_product', product_name=product_name, _external=True)},
+                {"rel": "update", "href": url_for('post_product', _external=True)},
+                {"rel": "delete", "href": url_for('delete_product', product_id=row[0], _external=True)}
+            ]
         }
-        product['links'] = [
-            {"rel": "self", "href": url_for('search_product', product_name=product_name, _external=True)},
-            {"rel": "update", "href": url_for('post_product', _external=True)},
-            {"rel": "delete", "href": url_for('delete_product', product_id=row[0], _external=True)}
-        ]
         result_list.append(product)
 
     # Pagination links
@@ -189,6 +191,7 @@ def post_product():
     required_fields = ["product_name", "price", "quantity", "description", "image_url", "seller_id"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
+
     query = """
     INSERT INTO Products (product_name, price, quantity, description, image_url, is_sold, seller_id)
     VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -204,7 +207,17 @@ def post_product():
     )
     result = insert_into_db(query, params)
     if result == "Success":
-        return jsonify({"message": "New product added"}), 201
+        conn = pymysql.connect(**db_config)
+        cursor = conn.cursor()
+        product_id = cursor.lastrowid
+        return jsonify({
+            "message": "New product added",
+            "links": [
+                {"rel": "self", "href": url_for('search_product', product_name=data["product_name"], _external=True)},
+                {"rel": "get", "href": url_for('search_product', product_name=data["product_name"], _external=True)},
+                {"rel": "delete", "href": url_for('delete_product', product_id=product_id, _external=True)}
+            ]
+        }), 201
     else:
         return jsonify({"error": result}), 500
 
@@ -219,7 +232,13 @@ def delete_product():
     
     result_product = insert_into_db(delete_product_query, (product_id,))
     if result_product == "Success":
-        return jsonify({"message": f"Product with ID {product_id} deleted successfully"}), 200
+        return jsonify({
+            "message": f"Product with ID {product_id} deleted successfully",
+            "links": [
+                {"rel": "self", "href": url_for('search_product', _external=True)},
+                {"rel": "create", "href": url_for('post_product', _external=True)}
+            ]
+        }), 200
     else:
         return jsonify({"error": result_product}), 500
 
