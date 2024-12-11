@@ -4,11 +4,16 @@ import pymysql
 from decimal import Decimal
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
-from flask import Flask, request, jsonify, send_from_directory, url_for
+from flask import Flask, request, jsonify, send_from_directory, url_for, g
 
 import logging
 from datetime import datetime
+import uuid
 
+logging.getLogger('werkzeug').setLevel(logging.WARNING) # this turns of autologging for flask
+
+def generate_correlation_id():
+    return str(uuid.uuid4())
 app = Flask(__name__)
 CORS(app)
 
@@ -16,16 +21,21 @@ logging.basicConfig(level=logging.INFO)
 
 @app.before_request
 def before_request_logging():
+    # Check if the correlation ID is provided in headers; otherwise, generate a new one
+    correlation_id = request.headers.get('X-Correlation-ID')
+    g.correlation_id = correlation_id  # Store it in Flask's context (g)
     request.start_time = datetime.now()
+    logging.info(f"BEFORE_REQUEST -- CID: {correlation_id}")
     logging.info(f"Incoming request: {request.method} {request.path}")
 
 @app.after_request
 def after_request_logging(response):
     duration = datetime.now() - request.start_time
     duration_ms = int(duration.total_seconds() * 1000)
-    
+
+    logging.info(f"AFTER_REQUEST -- CID: {g.correlation_id}")
     logging.info(
-        f"Completed request: {request.method} {request.path} "
+        f"{g.correlation_id} -- Completed request: {request.method} {request.path} "
         f"Status: {response.status_code} Duration: {duration_ms}ms"
     )
     return response
@@ -213,8 +223,10 @@ def delete_product():
     else:
         return jsonify({"error": result_product}), 500
 
-
+@app.route('/')
+def health_check():
+    return {"status": "Product service is up"}, 200
 
 if __name__ == '__main__':
     portNum = int(sys.argv[1]) if len(sys.argv) > 1 else 8888
-    app.run(host='0.0.0.0', port=portNum, debug=True)
+    app.run(host='0.0.0.0', port=portNum)
